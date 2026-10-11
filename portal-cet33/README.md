@@ -63,3 +63,6 @@ En Administración central → Contenidos → La escuela se agregan textos y fot
 
 ### Servicio de impresiones y fotocopias
 La sección `impresiones` recibe pedidos de fotocopias, láser, planos y 3D con nombre, correo, curso, descripción, cantidad, tamaño y color/material. Admite hasta 3 archivos (25 MB por archivo, 30 MB por envío): PDF; para 3D también STL y 3MF. Los pedidos y adjuntos son privados para administradores y responsables autorizados de esta sección. En «Consultas y pedidos» se descargan archivos y se responde mediante la aplicación de correo. `impresionesEmail` se configura desde el panel; no hay envío automático de email ni confirmación de impresión automática.
+
+### Equipo directivo
+Acceso `direccion` en la home. Director, vicedirector de mañana, vicedirector de tarde y jefe de taller se cargan desde Administración central → Contenidos → Equipo directivo, con nombre, cargo y correo. Los contactos son de consulta pública dentro del portal; la edición requiere autorización para esta sección. Los espacios sin cargar se muestran como pendientes.

@@ -13,6 +13,7 @@ export const sections=[
 {id:'familias',title:'Contacto para familias',description:'Consultas a Vicedirección',icon:'Mail',photo:'comunidad',type:'contact'},
 {id:'comunidad',title:'Servicio a la comunidad',description:'Consultas técnicas, empleo y pasantías',icon:'Handshake',photo:'obra',type:'community'},
 {id:'empresas',title:'Empresas y colaboradores',description:'Materiales, herramientas y otros aportes',icon:'Building2',photo:'obra',type:'sponsor'},
+{id:'direccion',title:'Equipo directivo',description:'Dirección, vicedirecciones y jefatura de taller · Contactos',icon:'Building2',photo:'taller',type:'person'},
 {id:'cooperadora',title:'Cooperadora',description:'Integrantes, cargos y correo de contacto',icon:'Users',photo:'comunidad',type:'person'},
 {id:'estudiantes',title:'Centro de estudiantes',description:'Integrantes, cargos y correo de contacto',icon:'Users',photo:'expo',type:'person'},
 {id:'inscripcion',title:'Inscripción 2027',description:'Planilla PDF y correo para consultas y envío',icon:'FileDown',photo:'planos',type:'document'},
@@ -21,3 +22,5 @@ export const sections=[
 export const defaults:Record<string,string>={...Object.fromEntries(sections.flatMap(s=>[[s.id+'Title',s.title],[s.id+'Description',s.description]])),impresionesEmail:'',instagramUrl:'',institutionImageUrl:'',heroImageUrl:'',logoUrl:'',school:'CET Nº33',subtitle:'Escuela Técnica · Maestro Mayor de Obras',location:'General Roca · Río Negro',heroTitle:'APRENDER HACIENDO.',heroSubtitle:'PROYECTAR CON FUTURO.',heroText:'Formación técnica, trabajo en equipo y compromiso con la comunidad.',bibliotecaUrl:'https://biblioteca-mmo.sleekshore.chatgpt.site',secretariaEmail:'',licenciaUrl:'',licenciaTipoUrl:'',vicedireccionEmail:'',comunidadEmail:'',empresasEmail:'',cooperadoraEmail:'',estudiantesEmail:'',inscripcionEmail:'',inscripcionYear:'2027',inscripcionInstructions:'Descargá la planilla, completala y enviá el PDF al correo de inscripción.',calendarioUrl:'',cuadernoUrl:'',boletinesUrl:'',inscripcionPdf:'',institutionText:'Una escuela técnica que forma estudiantes para proyectar, construir y trabajar con la comunidad.'};
 export type PortalRecord={id:string;section:string;author:string;created:string;data:Record<string,string>;files:{id:string;name:string;mime:string}[]};
 export type Actor={email:string;name:string;role:string;sections:string[]}|null;
+
+export const leadershipRoles=['Director','Vicedirector · Turno mañana','Vicedirector · Turno tarde','Jefe de taller'];
