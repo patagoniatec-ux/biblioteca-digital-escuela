@@ -66,3 +66,6 @@ La sección `impresiones` recibe pedidos de fotocopias, láser, planos y 3D con 
 
 ### Equipo directivo
 Acceso `direccion` en la home. Director, vicedirector de mañana, vicedirector de tarde y jefe de taller se cargan desde Administración central → Contenidos → Equipo directivo, con nombre, cargo y correo. Los contactos son de consulta pública dentro del portal; la edición requiere autorización para esta sección. Los espacios sin cargar se muestran como pendientes.
+
+### Bingo solidario
+Acceso en la home, con publicaciones e imágenes cargadas desde Contenidos → Bingo solidario y formulario de colaboración debajo. Frecuencia informativa: cada 15 días; no se inventan fechas. El formulario registra nombre, empresa opcional, correo, teléfono, tipo de aporte y mensaje. Las consultas son privadas para administradores y responsables de bingo. `bingoEmail` se configura en el panel. Permite enviar la propuesta desde la aplicación de correo del visitante; el envío automático sigue pendiente del servicio de email.

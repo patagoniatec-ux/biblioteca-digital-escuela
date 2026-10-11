@@ -56,3 +56,11 @@ const printerState=await (await portal.GET()).json();assert.equal(printerState.m
 assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:msg})})).status,403);
 const download=await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:printId})});assert.equal(download.status,200);assert.ok(download.headers.get('content-disposition').startsWith('attachment;'));
 console.log('Printing uploads, validation and section-scoped private downloads: PASS');
+user={email:'owner@example.org',displayName:'Owner',userId:'owner'};
+await portal.POST(request({action:'config',values:JSON.stringify({bingoEmail:'bingo@example.org'})}));
+await portal.POST(request({action:'member',email:'bingo-staff@example.org',role:'editor',sections:['bingo']}));
+user=null;
+r=await contact.POST(request({kind:'bingo',name:'Colaborador',company:'Empresa local',email:'sponsor@example.org',subject:'Premios',message:'Queremos aportar premios'}));assert.equal(r.status,200);assert.equal((await r.json()).email,'bingo@example.org');
+user={email:'bingo-staff@example.org',displayName:'Bingo',userId:'bingo'};
+const bingoState=await (await portal.GET()).json();assert.equal(bingoState.messages.length,1);assert.equal(bingoState.messages[0].kind,'bingo');assert.equal(JSON.parse(bingoState.messages[0].payload).company,'Empresa local');
+console.log('Bingo collaboration destination and section-scoped inbox: PASS');
