@@ -16,7 +16,7 @@ const lib=await load('lib/portal.ts',{"import { env } from 'cloudflare:workers';
 const portal=await load('app/api/portal/route.ts',{"import { actor,db,bucket,config,records,permitted,safeUrl,validSection } from '@/lib/portal';":"const {actor,db,bucket,config,records,permitted,safeUrl,validSection}=globalThis.__portal;","import { defaults } from '@/lib/sections';":"const {defaults}=globalThis.__sections;","import { initialSubjects } from '@/lib/catalog';":"const {initialSubjects}=globalThis.__catalog;"});
 const files=await load('app/api/files/[id]/route.ts',{"import { actor,db,bucket,canRead } from '@/lib/portal';":"const {actor,db,bucket,canRead}=globalThis.__portal;"});
 const contact=await load('app/api/contacto/route.ts',{"import {db,config,bucket} from '@/lib/portal';":"const {db,config,bucket}=globalThis.__portal;"});
-const photos=await load('app/api/contacto/[id]/route.ts',{"import {db,bucket,actor} from '@/lib/portal';":"const {db,bucket,actor}=globalThis.__portal;"});
+const photos=await load('app/api/contacto/[id]/route.ts',{"import {db,bucket,actor,permitted} from '@/lib/portal';":"const {db,bucket,actor,permitted}=globalThis.__portal;"});
 function request(values,origin='https://school.test'){const f=new FormData();for(const[k,v]of Object.entries(values))if(Array.isArray(v))v.forEach(x=>f.append(k,x));else f.set(k,v);return new Request('https://school.test/api/portal',{method:'POST',headers:{origin},body:f})}
 assert.equal((await portal.POST(request({action:'initialize'}))).status,401);
 user={email:'owner@example.org',displayName:'Owner',userId:'owner'};
@@ -42,3 +42,17 @@ assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{para
 user={email:'owner@example.org',displayName:'Owner',userId:'owner'};assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:msg})})).status,200);const ownerState=await (await portal.GET()).json();assert.equal(ownerState.messages.length,1);assert.ok(ownerState.records.some(r=>r.id===privateId));
 assert.equal((await portal.POST(request({action:'record',section:'planificaciones',id:publicId,title:'Público',removeFiles:[publicFile]}))).status,200);assert.equal((await files.GET(new Request('https://school.test'),{params:Promise.resolve({id:publicFile})})).status,404);
 console.log('Permissions, protected downloads, uploads, public queries and private contact photos: PASS');
+
+user=null;
+assert.equal((await contact.POST(request({kind:'impresiones',name:'Alumno',email:'print@example.org',service:'Impresión láser',message:'Imprimir A4'}))).status,400);
+assert.equal((await contact.POST(request({kind:'impresiones',name:'Alumno',email:'print@example.org',service:'Impresión láser',message:'Imprimir',files:new File(['bad'],'bad.stl')}))).status,400);
+r=await contact.POST(request({kind:'impresiones',name:'Alumno',email:'print@example.org',service:'Impresión 3D',message:'Modelo PLA',files:new File(['solid test'],'model.stl')}));assert.equal(r.status,200);
+const printId=sql.prepare("SELECT id FROM portal_messages WHERE kind='impresiones'").get().id;
+assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:printId})})).status,403);
+user={email:'owner@example.org',displayName:'Owner',userId:'owner'};
+await portal.POST(request({action:'member',email:'printer@example.org',role:'editor',sections:['impresiones']}));
+user={email:'printer@example.org',displayName:'Printer',userId:'printer'};
+const printerState=await (await portal.GET()).json();assert.equal(printerState.messages.length,1);assert.equal(printerState.messages[0].kind,'impresiones');
+assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:msg})})).status,403);
+const download=await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:printId})});assert.equal(download.status,200);assert.ok(download.headers.get('content-disposition').startsWith('attachment;'));
+console.log('Printing uploads, validation and section-scoped private downloads: PASS');

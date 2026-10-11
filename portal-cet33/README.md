@@ -60,3 +60,6 @@ GitHub conserva código y migraciones; **no** incluye las consultas, datos perso
 ## La escuela
 
 En Administración central → Contenidos → La escuela se agregan textos y fotografías como publicaciones editables. La presentación y el enlace opcional de la imagen principal se modifican en Configuración. Si el enlace está vacío se conserva la imagen original. Esta sección también admite responsables autorizados y no agrega un acceso extra a la grilla de quince tarjetas.
+
+### Servicio de impresiones y fotocopias
+La sección `impresiones` recibe pedidos de fotocopias, láser, planos y 3D con nombre, correo, curso, descripción, cantidad, tamaño y color/material. Admite hasta 3 archivos (25 MB por archivo, 30 MB por envío): PDF; para 3D también STL y 3MF. Los pedidos y adjuntos son privados para administradores y responsables autorizados de esta sección. En «Consultas y pedidos» se descargan archivos y se responde mediante la aplicación de correo. `impresionesEmail` se configura desde el panel; no hay envío automático de email ni confirmación de impresión automática.
