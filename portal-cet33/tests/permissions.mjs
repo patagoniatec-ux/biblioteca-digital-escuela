@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {DatabaseSync} from 'node:sqlite';
+import ts from 'typescript';
+// Execute the actual route handlers against a local SQLite/D1 adapter and a mock R2 bucket.
+const sql=new DatabaseSync(':memory:');
+sql.exec(await fs.readFile('drizzle/0000_material_energizer.sql','utf8'));
+const adapter={prepare(query){const stmt=sql.prepare(query);let values=[];const result={bind(...v){values=v;return result},async first(){return stmt.get(...values)||null},async all(){return {results:stmt.all(...values)}},async run(){return stmt.run(...values)}};return result},async batch(stmts){sql.exec('BEGIN');try{const r=await Promise.all(stmts.map(s=>s.run()));sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};
+const objects=new Map();const bucket={async put(k,b){objects.set(k,await new Response(b).arrayBuffer())},async get(k){return objects.has(k)?{body:objects.get(k)}:null},async delete(k){objects.delete(k)}};
+let user=null;
+async function load(path,replacements={}){let src=await fs.readFile(path,'utf8');for(const [find,replace]of Object.entries(replacements))src=src.replace(find,replace);const output=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;return import('data:text/javascript;base64,'+Buffer.from(output).toString('base64'));}
+const sectionModule=await load('lib/sections.ts');globalThis.__sections=sectionModule;
+const catalog=await load('lib/catalog.ts');globalThis.__catalog=catalog;
+globalThis.__env={DB:adapter,BUCKET:bucket};globalThis.__getUser=async()=>user;
+const lib=await load('lib/portal.ts',{"import { env } from 'cloudflare:workers';":"const env=globalThis.__env;","import { getChatGPTUser } from '@/app/chatgpt-auth';":"const getChatGPTUser=globalThis.__getUser;","import { sections,defaults } from './sections';":"const {sections,defaults}=globalThis.__sections;"});globalThis.__portal=lib;
+const portal=await load('app/api/portal/route.ts',{"import { actor,db,bucket,config,records,permitted,safeUrl,validSection } from '@/lib/portal';":"const {actor,db,bucket,config,records,permitted,safeUrl,validSection}=globalThis.__portal;","import { defaults } from '@/lib/sections';":"const {defaults}=globalThis.__sections;","import { initialSubjects } from '@/lib/catalog';":"const {initialSubjects}=globalThis.__catalog;"});
+const files=await load('app/api/files/[id]/route.ts',{"import { actor,db,bucket,canRead } from '@/lib/portal';":"const {actor,db,bucket,canRead}=globalThis.__portal;"});
+const contact=await load('app/api/contacto/route.ts',{"import {db,config,bucket} from '@/lib/portal';":"const {db,config,bucket}=globalThis.__portal;"});
+const photos=await load('app/api/contacto/[id]/route.ts',{"import {db,bucket,actor} from '@/lib/portal';":"const {db,bucket,actor}=globalThis.__portal;"});
+function request(values,origin='https://school.test'){const f=new FormData();for(const[k,v]of Object.entries(values))if(Array.isArray(v))v.forEach(x=>f.append(k,x));else f.set(k,v);return new Request('https://school.test/api/portal',{method:'POST',headers:{origin},body:f})}
+assert.equal((await portal.POST(request({action:'initialize'}))).status,401);
+user={email:'owner@example.org',displayName:'Owner',userId:'owner'};
+assert.equal((await portal.POST(request({action:'initialize'}))).status,200);
+assert.equal((await portal.POST(request({action:'config',values:JSON.stringify({heroTitle:'Nuevo título'})},'https://evil.test'))).status,403);
+let r=await portal.POST(request({action:'record',section:'trayectorias',title:'Privado',files:new File(['%PDF-1.4 test'],'private.pdf',{type:'application/pdf'})}));assert.equal(r.status,200);const privateId=(await r.json()).id;
+r=await portal.POST(request({action:'record',section:'planificaciones',title:'Público',files:new File(['%PDF-1.4 test'],'public.pdf',{type:'application/pdf'})}));assert.equal(r.status,200);const publicId=(await r.json()).id;
+const privateFile=sql.prepare('SELECT id FROM portal_files WHERE record_id=?').get(privateId).id;
+const publicFile=sql.prepare('SELECT id FROM portal_files WHERE record_id=?').get(publicId).id;
+user=null;const anonymous=await (await portal.GET()).json();assert.equal(anonymous.records.length,1);assert.equal(anonymous.records[0].id,publicId);assert.deepEqual(anonymous.members,[]);assert.deepEqual(anonymous.messages,[]);
+assert.equal((await files.GET(new Request('https://school.test'),{params:Promise.resolve({id:privateFile})})).status,403);
+assert.equal((await files.GET(new Request('https://school.test'),{params:Promise.resolve({id:publicFile})})).status,200);
+user={email:'teacher@example.org',displayName:'Teacher',userId:'teacher'};
+assert.equal((await portal.POST(request({action:'initialize'}))).status,403);
+assert.equal((await portal.POST(request({action:'record',section:'planificaciones',title:'Unauthorized'}))).status,403);
+user={email:'owner@example.org',displayName:'Owner',userId:'owner'};assert.equal((await portal.POST(request({action:'member',email:'teacher@example.org',role:'editor',sections:['planificaciones']}))).status,200);
+user={email:'teacher@example.org',displayName:'Teacher',userId:'teacher'};assert.equal((await portal.POST(request({action:'config',values:'{}'}))).status,403);assert.equal((await portal.POST(request({action:'delete',id:privateId}))).status,403);
+assert.equal((await portal.POST(request({action:'record',section:'planificaciones',title:'Imagen incorrecta',files:new File(['image'],'wrong.png',{type:'image/png'})}))).status,400);
+assert.equal((await portal.POST(request({action:'record',section:'planificaciones',title:'Plan docente'}))).status,200);
+assert.equal((await portal.POST(request({action:'record',section:'planificaciones',title:'Enlace peligroso',url:'javascript:alert(1)'}))).status,400);
+user=null;r=await contact.POST(request({kind:'comunidad',name:'Vecino',email:'neighbor@example.org',message:'Consulta',photos:new File(['image'],'photo.png',{type:'image/png'})}));assert.equal(r.status,200);const msg=sql.prepare('SELECT id FROM portal_messages').get().id;
+assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:msg})})).status,403);
+user={email:'owner@example.org',displayName:'Owner',userId:'owner'};assert.equal((await photos.GET(new Request('https://school.test/?photo=0'),{params:Promise.resolve({id:msg})})).status,200);const ownerState=await (await portal.GET()).json();assert.equal(ownerState.messages.length,1);assert.ok(ownerState.records.some(r=>r.id===privateId));
+assert.equal((await portal.POST(request({action:'record',section:'planificaciones',id:publicId,title:'Público',removeFiles:[publicFile]}))).status,200);assert.equal((await files.GET(new Request('https://school.test'),{params:Promise.resolve({id:publicFile})})).status,404);
+console.log('Permissions, protected downloads, uploads, public queries and private contact photos: PASS');

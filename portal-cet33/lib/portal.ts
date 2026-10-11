@@ -1,0 +1,12 @@
+import { env } from 'cloudflare:workers';
+import { getChatGPTUser } from '@/app/chatgpt-auth';
+import { sections,defaults } from './sections';
+export function db(){if(!env.DB)throw new Error('Base de datos no disponible');return env.DB;}
+export function bucket(){if(!env.BUCKET)throw new Error('Archivos no disponibles');return env.BUCKET;}
+export async function actor(){const u=await getChatGPTUser();if(!u)return null;const owner=await db().prepare("SELECT value FROM portal_settings WHERE key='owner'").first<{value:string}>();const email=u.email.toLowerCase();const member=await db().prepare('SELECT * FROM portal_members WHERE email=?').bind(email).first<{role:string;sections:string}>();return {email,name:u.displayName,role:owner?.value===email?'owner':member?.role??'reader',sections:member?JSON.parse(member.sections):[]};}
+export function permitted(who:Awaited<ReturnType<typeof actor>>,section:string){return !!who&&(['owner','admin'].includes(who.role)||(who.role==='editor'&&who.sections.includes(section)));}
+export function canRead(who:Awaited<ReturnType<typeof actor>>,section:string){return section!=='trayectorias'||permitted(who,section);}
+export async function config(){const rows=await db().prepare("SELECT key,value FROM portal_settings WHERE key!='owner'").all<{key:string;value:string}>();return {...defaults,...Object.fromEntries(rows.results.map(r=>[r.key,r.value]))};}
+export async function records(who:Awaited<ReturnType<typeof actor>>){const privateAccess=canRead(who,'trayectorias');const rows=await db().prepare(privateAccess?'SELECT * FROM portal_records ORDER BY created DESC':"SELECT * FROM portal_records WHERE section!='trayectorias' ORDER BY created DESC").all<any>();const fs=await db().prepare(privateAccess?'SELECT id,record_id,name,mime FROM portal_files':"SELECT f.id,f.record_id,f.name,f.mime FROM portal_files f JOIN portal_records r ON f.record_id=r.id WHERE r.section!='trayectorias'").all<any>();return rows.results.map(r=>({id:r.id,section:r.section,author:r.author,created:r.created,data:JSON.parse(r.payload),files:fs.results.filter(f=>f.record_id===r.id).map(f=>({id:f.id,name:f.name,mime:f.mime}))}));}
+export function safeUrl(v:string){if(!v)return '';if(v.startsWith('/api/files/'))return v;const u=new URL(v);if(!['http:','https:'].includes(u.protocol))throw new Error('El enlace debe comenzar con https:// o http://');return u.href;}
+export function validSection(s:string){return sections.some(x=>x.id===s);}
