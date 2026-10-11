@@ -56,3 +56,7 @@ El esquema está en `db/schema.ts` y las migraciones en `drizzle/`. No se crean 
 - `public/media/`: recursos visuales.
 
 GitHub conserva código y migraciones; **no** incluye las consultas, datos personales o archivos cargados en funcionamiento. No subir tokens ni bases de datos reales al repositorio.
+
+## La escuela
+
+En Administración central → Contenidos → La escuela se agregan textos y fotografías como publicaciones editables. La presentación y el enlace opcional de la imagen principal se modifican en Configuración. Si el enlace está vacío se conserva la imagen original. Esta sección también admite responsables autorizados y no agrega un acceso extra a la grilla de quince tarjetas.
